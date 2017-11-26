@@ -1,3 +1,5 @@
+import * as ursa from "ursa";
+
 type PlayerId = 1 | 2 | 3 | 4;
 type Empty = null;
 type ReservedSquare<PlayerId> = PlayerId;
@@ -12,6 +14,10 @@ type Client = {
   // Stuff that could be also just derived from actions
   gameboard: GameBoard;
   turn: PlayerId;
+  privateKey: any;
+  publicKeys: {
+    [player: number]: string;
+  };
 };
 
 enum ActionType {
@@ -27,6 +33,7 @@ type Move = {
 interface MoveAction {
   type: ActionType.MOVE;
   payload: Move;
+  signature: string;
 }
 
 type Action = MoveAction; // | Something | else
@@ -37,15 +44,23 @@ function createGameboard(): GameBoard {
     .map(() => Array(16).fill(null));
 }
 
-const createClient = (playerId): Client => ({
-  playerId,
-  actions: [],
+const createClient = (playerId): Client => {
+  const privateKey = ursa.generatePrivateKey(1024, 6969);
 
-  // Stuff that could be also just derived from actions
-  gameboard: createGameboard(),
-  turn: 1
-});
+  return {
+    playerId,
+    actions: [],
 
+    // Stuff that could be also just derived from actions
+    gameboard: createGameboard(),
+    turn: 1,
+    publicKeys: {},
+
+    // Stuff that would live somewhere in the client
+    // never to be shared with other clients
+    privateKey
+  };
+};
 function makeMove(client: Client, action: Action): Client {
   if (client.turn !== action.payload.playerId) {
     // Not gonna do anything!
@@ -75,7 +90,14 @@ function makeMove(client: Client, action: Action): Client {
  */
 
 function handleAction(client: Client, action: Action): Client {
-  // validoi signature
+  try {
+    const pub = ursa.createPublicKey(
+      client.publicKeys[action.payload.playerId]
+    );
+    pub.publicDecrypt(action.signature, "base64", "utf8");
+  } catch {
+    return client;
+  }
 
   if (action.type === ActionType.MOVE) {
     return makeMove(client, action);
@@ -99,20 +121,60 @@ function printGameboard(board: GameBoard): void {
   );
 }
 
+function storePublicKeys(
+  client: Client,
+  publicKeys: { [playedId: number]: string }
+) {
+  return {
+    ...client,
+    publicKeys
+  };
+}
+
+function sharePublicKeys(clients: Client[]) {
+  return clients.map(client =>
+    storePublicKeys(
+      client,
+      clients.reduce(
+        (keys, cli) => ({
+          ...keys,
+          [cli.playerId]: cli.privateKey.toPublicPem().toString()
+        }),
+        {}
+      )
+    )
+  );
+}
+
+function createMoveAction(client: Client, x: number, y: number): MoveAction {
+  const payload = { x: 14, y: 0, playerId: 1 };
+  const signature = client.privateKey.privateEncrypt(
+    JSON.stringify(payload),
+    "utf8",
+    "base64"
+  );
+  return {
+    type: ActionType.MOVE,
+    payload: { x, y, playerId: client.playerId },
+    signature
+  };
+}
+
 describe("Hangouts", () => {
   describe("Client", () => {
     it("can do a move", () => {
-      const client1 = createClient(1);
-      const client2 = createClient(2);
-      const client3 = createClient(3);
-      const client4 = createClient(4);
+      const clients = sharePublicKeys([
+        createClient(1),
+        createClient(2),
+        createClient(3),
+        createClient(4)
+      ]);
+
+      const [client1] = clients;
 
       const updatedClients = dispatchAction(
-        {
-          type: ActionType.MOVE,
-          payload: { x: 14, y: 0, playerId: 1 }
-        },
-        [client1, client2, client3, client4]
+        createMoveAction(client1, 14, 0),
+        clients
       );
 
       expect(updatedClients[0].gameboard).toEqual(updatedClients[1].gameboard);
@@ -124,19 +186,20 @@ describe("Hangouts", () => {
     });
 
     it("can't do a move when it's someone else's turn", () => {
-      const client1 = createClient(1);
-      const client2 = createClient(2);
-      const client3 = createClient(3);
-      const client4 = createClient(4);
+      const clients = sharePublicKeys([
+        createClient(1),
+        createClient(2),
+        createClient(3),
+        createClient(4)
+      ]);
+
+      const [client1, client2] = clients;
 
       const initialGameboard = client1.gameboard;
 
       const updatedClients = dispatchAction(
-        {
-          type: ActionType.MOVE,
-          payload: { x: 14, y: 0, playerId: 2 }
-        },
-        [client1, client2, client3, client4]
+        createMoveAction(client2, 14, 0),
+        clients
       );
 
       expect(updatedClients[1].gameboard).toEqual(initialGameboard);
@@ -145,7 +208,20 @@ describe("Hangouts", () => {
 
     describe("Invalid moves", () => {
       // might need signatures etc..
-      it.skip("cant do a move as any other player", () => {});
+      it("cant do a move as any other player", () => {
+        const clients = sharePublicKeys([
+          createClient(1),
+          createClient(2),
+          createClient(3),
+          createClient(4)
+        ]);
+        const [client1] = clients;
+        const initialGameboard = client1.gameboard;
+        const action = createMoveAction(client1, 14, 0);
+        action.payload.playerId = 2;
+        const [, client2] = dispatchAction(action, clients);
+        expect(client2.gameboard).toEqual(initialGameboard);
+      });
 
       it.skip("can't add an X on to a reserved square", () => {});
 

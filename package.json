@@ -38,6 +38,7 @@
   "homepage": "https://github.com/jsynowiec/node-typescript-boilerplate#readme",
   "dependencies": {
     "fast-sha256": "^1.1.0",
-    "tslib": "~1.8.0"
+    "tslib": "~1.8.0",
+    "ursa": "^0.9.4"
   }
 }
