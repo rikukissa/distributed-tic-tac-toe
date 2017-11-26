@@ -33,12 +33,16 @@ export const createClient = (playerId): Client => {
   };
 };
 
-export function storePublicKeys(
+export function storePublicKey(
   client: Client,
-  publicKeys: { [playedId: number]: string }
+  playedId: PlayerId,
+  publicKey: string
 ): Client {
   return {
     ...client,
-    publicKeys
+    publicKeys: {
+      ...client.publicKeys,
+      [playedId]: publicKey
+    }
   };
 }

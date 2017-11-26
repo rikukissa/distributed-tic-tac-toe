@@ -1,8 +1,10 @@
 import { PlayerId } from "./game";
-import { Client } from "./client";
+import { Client, storePublicKey } from "./client";
+import { getPublicKey } from "./pgp";
 
 export enum ActionType {
-  MOVE = "MOVE"
+  MOVE = "MOVE",
+  JOIN = "JOIN"
 }
 
 export type Move = {
@@ -16,17 +18,35 @@ export interface MoveAction {
   payload: Move;
 }
 
-export type Action = MoveAction; // | Something | else
+export type Join = {
+  publicKey: string;
+  playerId: PlayerId;
+};
+
+export interface JoinAction {
+  type: ActionType.JOIN;
+  payload: Join;
+}
+
+export type Action = MoveAction | JoinAction;
 
 export function handleAction(client: Client, action: Action): Client {
   if (action.type === ActionType.MOVE) {
     return makeMove(client, action);
   }
 
+  if (action.type === ActionType.JOIN) {
+    return storePublicKey(
+      client,
+      action.payload.playerId,
+      action.payload.publicKey
+    );
+  }
+
   return client;
 }
 
-function makeMove(client: Client, action: Action): Client {
+function makeMove(client: Client, action: MoveAction): Client {
   if (client.turn !== action.payload.playerId) {
     // Not gonna do anything!
     return client;
@@ -58,5 +78,15 @@ export function createMoveAction(
   return {
     type: ActionType.MOVE,
     payload: { x, y, playerId: client.playerId }
+  };
+}
+
+export function createJoinAction(client: Client): JoinAction {
+  return {
+    type: ActionType.JOIN,
+    payload: {
+      playerId: client.playerId,
+      publicKey: getPublicKey(client.privateKey)
+    }
   };
 }

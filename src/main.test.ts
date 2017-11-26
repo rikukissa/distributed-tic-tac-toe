@@ -1,27 +1,12 @@
-import { dispatchAction } from "./io";
-import { createClient, Client, storePublicKeys } from "./client";
-import { createMoveAction } from "./actions";
+import { dispatchAction, dispatchUnsecureAction } from "./io";
+import { createClient } from "./client";
+import { createMoveAction, createJoinAction } from "./actions";
 
-// function printGameboard(board: GameBoard): void {
-//   console.log(
-//     board
-//       .map(row => row.map(square => (square === null ? "_" : square)).join(" "))
-//       .join("\n")
-//   );
-// }
-
-function sharePublicKeys(clients: Client[]) {
-  return clients.map(client =>
-    storePublicKeys(
-      client,
-      clients.reduce(
-        (keys, cli) => ({
-          ...keys,
-          [cli.playerId]: cli.privateKey.toPublicPem().toString()
-        }),
-        {}
-      )
-    )
+function sharePublicKeys(clients) {
+  return clients.reduce(
+    (finalClients, client) =>
+      dispatchUnsecureAction(createJoinAction(client), finalClients),
+    clients
   );
 }
 
@@ -74,7 +59,6 @@ describe("Hangouts", () => {
     });
 
     describe("Invalid moves", () => {
-      // might need signatures etc..
       it("cant do a move as any other player", () => {
         const clients = sharePublicKeys([
           createClient(1),

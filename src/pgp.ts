@@ -1,15 +1,18 @@
 import * as ursa from "ursa";
 import { SignedAction } from "./io";
+import { Action } from "./actions";
 
 export function verifyActionSender(
-  action: SignedAction,
+  signedAction: SignedAction<Action>,
   publicKeys: {
     [player: number]: string;
   }
 ) {
+  const { playerId } = signedAction.action.payload;
+
   try {
-    const pub = ursa.createPublicKey(publicKeys[action.payload.playerId]);
-    pub.publicDecrypt(action.signature, "base64", "utf8");
+    const pub = ursa.createPublicKey(publicKeys[playerId]);
+    pub.publicDecrypt(signedAction.signature, "base64", "utf8");
     return true;
   } catch {
     return false;
@@ -22,4 +25,8 @@ export function generatePrivateKey() {
 
 export function createSignature(privateKey, payload): string {
   return privateKey.privateEncrypt(JSON.stringify(payload), "utf8", "base64");
+}
+
+export function getPublicKey(privateKey): string {
+  return privateKey.toPublicPem().toString();
 }
