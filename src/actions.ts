@@ -1,6 +1,7 @@
 import { PlayerId } from "./game";
 import { Client, storePublicKey } from "./client";
 import { getPublicKey } from "./pgp";
+import { reserveSquare } from "./gameboard";
 
 export enum ActionType {
   MOVE = "MOVE",
@@ -30,6 +31,10 @@ export interface JoinAction {
 
 export type Action = MoveAction | JoinAction;
 
+/* 
+ * Main action handler
+ */
+
 export function handleAction(client: Client, action: Action): Client {
   if (action.type === ActionType.MOVE) {
     return makeMove(client, action);
@@ -46,21 +51,18 @@ export function handleAction(client: Client, action: Action): Client {
   return client;
 }
 
+/* 
+ * Action handlers
+ */
+
 function makeMove(client: Client, action: MoveAction): Client {
   if (client.turn !== action.payload.playerId) {
     // Not gonna do anything!
     return client;
   }
 
-  const move = action.payload;
-  const newGameboard = client.gameboard.map((row, rowNumber) => {
-    if (rowNumber === move.y) {
-      const newRow = row.slice(0);
-      newRow[move.x] = move.playerId;
-      return newRow;
-    }
-    return row;
-  });
+  const { x, y, playerId } = action.payload;
+  const newGameboard = reserveSquare(client.gameboard, playerId, { x, y });
 
   return {
     ...client,
@@ -69,6 +71,10 @@ function makeMove(client: Client, action: MoveAction): Client {
     turn: <PlayerId>((client.turn + 1) % 4)
   };
 }
+
+/* 
+ * Action creators
+ */
 
 export function createMoveAction(
   client: Client,

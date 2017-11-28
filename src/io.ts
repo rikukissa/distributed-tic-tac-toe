@@ -7,7 +7,10 @@ export interface SignedAction<Action> {
   action: Action;
 }
 
-// Inbound communication
+/* 
+ * Inbound message handling
+ */
+
 export function receiveAction(
   client: Client,
   signedAction: SignedAction<Action>
@@ -18,12 +21,15 @@ export function receiveAction(
   return handleAction(client, signedAction.action);
 }
 
-// Used for the first "JOIN" message when others do not know you pubkey
+// Used for the first "JOIN" message when others do not know your public key
 function receiveUnsecureAction(client: Client, action: Action) {
   return handleAction(client, action);
 }
 
-// Outbound communication
+/* 
+ * Outbound communication
+ */
+
 export function dispatchAction(
   client: Client,
   action: Action,
@@ -41,7 +47,7 @@ export function dispatchAction(
   return clients.map(client => receiveAction(client, signedAction));
 }
 
-// Used for the first "JOIN" message when others do not know you pubkey
+// Used for the first "JOIN" message when others do not know your public key
 export function dispatchUnsecureAction(
   action: Action,
   clients: Client[]

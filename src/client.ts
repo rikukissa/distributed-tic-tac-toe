@@ -6,13 +6,17 @@ import { generatePrivateKey } from "./pgp";
 export type Client = {
   playerId: PlayerId;
   actions: Action[];
-  // Stuff that could be also just derived from actions
-  gameboard: GameBoard;
-  turn: PlayerId;
-  privateKey: any;
   publicKeys: {
     [player: number]: string;
   };
+
+  // Stuff that would live somewhere in the client
+  // never to be shared with other clients
+  privateKey: any;
+
+  // Stuff that could be also just derived from actions
+  gameboard: GameBoard;
+  turn: PlayerId;
 };
 
 export const createClient = (playerId): Client => {
@@ -21,15 +25,15 @@ export const createClient = (playerId): Client => {
   return {
     playerId,
     actions: [],
-
-    // Stuff that could be also just derived from actions
-    gameboard: createGameboard(),
-    turn: 1,
     publicKeys: {},
 
     // Stuff that would live somewhere in the client
     // never to be shared with other clients
-    privateKey
+    privateKey,
+
+    // Stuff that could be also just derived from actions
+    gameboard: createGameboard(),
+    turn: 1
   };
 };
 
