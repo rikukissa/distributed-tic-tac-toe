@@ -1,41 +1,41 @@
+import { IClient, storePublicKey } from "./client";
 import { PlayerId } from "./game";
-import { Client, storePublicKey } from "./client";
-import { getPublicKey } from "./pgp";
 import { reserveSquare } from "./gameboard";
+import { getPublicKey } from "./pgp";
 
 export enum ActionType {
   MOVE = "MOVE",
   JOIN = "JOIN"
 }
 
-export interface Move {
+export interface IMove {
   x: number;
   y: number;
   playerId: PlayerId;
 }
 
-export interface MoveAction {
+export interface IMoveAction {
   type: ActionType.MOVE;
-  payload: Move;
+  payload: IMove;
 }
 
-export interface Join {
+export interface IJoin {
   publicKey: string;
   playerId: PlayerId;
 }
 
-export interface JoinAction {
+export interface IJoinAction {
   type: ActionType.JOIN;
-  payload: Join;
+  payload: IJoin;
 }
 
-export type Action = MoveAction | JoinAction;
+export type Action = IMoveAction | IJoinAction;
 
 /* 
  * Main action handler
  */
 
-export function handleAction(client: Client, action: Action): Client {
+export function handleAction(client: IClient, action: Action): IClient {
   if (action.type === ActionType.MOVE) {
     return makeMove(client, action);
   }
@@ -55,7 +55,7 @@ export function handleAction(client: Client, action: Action): Client {
  * Action handlers
  */
 
-function makeMove(client: Client, action: MoveAction): Client {
+function makeMove(client: IClient, action: IMoveAction): IClient {
   if (client.turn !== action.payload.playerId) {
     // Not gonna do anything!
     return client;
@@ -66,9 +66,9 @@ function makeMove(client: Client, action: MoveAction): Client {
 
   return {
     ...client,
-    gameboard: newGameboard,
     actions: client.actions.concat(action),
-    turn: <PlayerId>((client.turn + 1) % 4)
+    gameboard: newGameboard,
+    turn: ((client.turn + 1) % 4) as PlayerId
   };
 }
 
@@ -77,22 +77,22 @@ function makeMove(client: Client, action: MoveAction): Client {
  */
 
 export function createMoveAction(
-  client: Client,
+  client: IClient,
   x: number,
   y: number
-): MoveAction {
+): IMoveAction {
   return {
-    type: ActionType.MOVE,
-    payload: { x, y, playerId: client.playerId }
+    payload: { x, y, playerId: client.playerId },
+    type: ActionType.MOVE
   };
 }
 
-export function createJoinAction(client: Client): JoinAction {
+export function createJoinAction(client: IClient): IJoinAction {
   return {
-    type: ActionType.JOIN,
     payload: {
       playerId: client.playerId,
       publicKey: getPublicKey(client.privateKey)
-    }
+    },
+    type: ActionType.JOIN
   };
 }

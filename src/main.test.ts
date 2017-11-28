@@ -1,6 +1,9 @@
-import { dispatchAction, dispatchUnsecureAction } from "./io";
+import { createJoinAction, createMoveAction } from "./actions";
 import { createClient } from "./client";
-import { createMoveAction, createJoinAction } from "./actions";
+import { dispatchAction, dispatchUnsecureAction } from "./io";
+
+// tslint:disable-next-line no-empty
+const noop = () => {};
 
 function sharePublicKeys(clients) {
   return clients.reduce(
@@ -74,9 +77,9 @@ describe("Hangouts", () => {
         expect(client2.gameboard).toEqual(initialGameboard);
       });
 
-      it.skip("can't add an X on to a reserved square", () => {});
+      it.skip("can't add an X on to a reserved square", noop);
 
-      it.skip("can't just declare game to be won", () => {});
+      it.skip("can't just declare game to be won", noop);
     });
   });
 
@@ -91,8 +94,8 @@ describe("Hangouts", () => {
       expect(emptySquareRows).toHaveLength(0);
     });
 
-    it.skip("should end the game when there's no free squares", () => {});
+    it.skip("should end the game when there's no free squares", noop);
 
-    it.skip("should end the game when one player has 4 marks on a row", () => {});
+    it.skip("should end the game when one player has 4 marks on a row", noop);
   });
 });

@@ -1,8 +1,8 @@
 import { Action, handleAction } from "./actions";
-import { Client } from "./client";
+import { IClient } from "./client";
 import { createSignature, verifyActionSender } from "./pgp";
 
-export interface SignedAction<Action> {
+export interface ISignedAction {
   signature: string;
   action: Action;
 }
@@ -11,10 +11,7 @@ export interface SignedAction<Action> {
  * Inbound message handling
  */
 
-export function receiveAction(
-  client: Client,
-  signedAction: SignedAction<Action>
-) {
+export function receiveAction(client: IClient, signedAction: ISignedAction) {
   if (!verifyActionSender(signedAction, client.publicKeys)) {
     return client;
   }
@@ -22,7 +19,7 @@ export function receiveAction(
 }
 
 // Used for the first "JOIN" message when others do not know your public key
-function receiveUnsecureAction(client: Client, action: Action) {
+function receiveUnsecureAction(client: IClient, action: Action) {
   return handleAction(client, action);
 }
 
@@ -31,26 +28,26 @@ function receiveUnsecureAction(client: Client, action: Action) {
  */
 
 export function dispatchAction(
-  client: Client,
+  client: IClient,
   action: Action,
-  clients: Client[]
-): Client[] {
+  clients: IClient[]
+): IClient[] {
   const signature = createSignature(
     client.privateKey,
     JSON.stringify(action.payload)
   );
   const signedAction = {
-    signature,
-    action
+    action,
+    signature
   };
 
-  return clients.map(client => receiveAction(client, signedAction));
+  return clients.map(cli => receiveAction(cli, signedAction));
 }
 
 // Used for the first "JOIN" message when others do not know your public key
 export function dispatchUnsecureAction(
   action: Action,
-  clients: Client[]
-): Client[] {
+  clients: IClient[]
+): IClient[] {
   return clients.map(client => receiveUnsecureAction(client, action));
 }

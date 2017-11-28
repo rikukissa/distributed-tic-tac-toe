@@ -1,9 +1,9 @@
 import * as ursa from "ursa";
-import { SignedAction } from "./io";
-import { Action } from "./actions";
+
+import { ISignedAction } from "./io";
 
 export function verifyActionSender(
-  signedAction: SignedAction<Action>,
+  signedAction: ISignedAction,
   publicKeys: {
     [player: number]: string;
   }

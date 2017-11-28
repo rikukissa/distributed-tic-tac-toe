@@ -1,9 +1,9 @@
-import { GameBoard, createGameboard } from "./gameboard";
-import { PlayerId } from "./game";
 import { Action } from "./actions";
+import { PlayerId } from "./game";
+import { createGameboard, GameBoard } from "./gameboard";
 import { generatePrivateKey } from "./pgp";
 
-export interface Client {
+export interface IClient {
   playerId: PlayerId;
   actions: Action[];
   publicKeys: {
@@ -19,12 +19,12 @@ export interface Client {
   turn: PlayerId;
 }
 
-export const createClient = (playerId): Client => {
+export const createClient = (playerId): IClient => {
   const privateKey = generatePrivateKey();
 
   return {
-    playerId,
     actions: [],
+    playerId,
     publicKeys: {},
 
     // Stuff that would live somewhere in the client
@@ -38,10 +38,10 @@ export const createClient = (playerId): Client => {
 };
 
 export function storePublicKey(
-  client: Client,
+  client: IClient,
   playedId: PlayerId,
   publicKey: string
-): Client {
+): IClient {
   return {
     ...client,
     publicKeys: {

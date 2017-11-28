@@ -12,7 +12,7 @@
     "jest": "~21.2.1",
     "rimraf": "~2.6.2",
     "tslint": "~5.8.0",
-    "tslint-microsoft-contrib": "~5.0.1",
+    "tslint-config-prettier": "^1.6.0",
     "tsutils": "~2.12.2",
     "typescript": "~2.6.1"
   },
