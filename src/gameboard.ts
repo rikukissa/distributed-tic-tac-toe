@@ -5,7 +5,10 @@ export type ReservedSquare<PlayerId> = PlayerId;
 export type Square = Empty | ReservedSquare<PlayerId>;
 export type Row = Square[];
 export type GameBoard = Row[];
-export type Position = { x: number; y: number };
+export interface Position {
+  x: number;
+  y: number;
+}
 
 export function createGameboard(): GameBoard {
   return Array(16)

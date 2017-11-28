@@ -3,7 +3,7 @@ import { PlayerId } from "./game";
 import { Action } from "./actions";
 import { generatePrivateKey } from "./pgp";
 
-export type Client = {
+export interface Client {
   playerId: PlayerId;
   actions: Action[];
   publicKeys: {
@@ -17,7 +17,7 @@ export type Client = {
   // Stuff that could be also just derived from actions
   gameboard: GameBoard;
   turn: PlayerId;
-};
+}
 
 export const createClient = (playerId): Client => {
   const privateKey = generatePrivateKey();

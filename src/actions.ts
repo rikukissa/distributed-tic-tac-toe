@@ -8,21 +8,21 @@ export enum ActionType {
   JOIN = "JOIN"
 }
 
-export type Move = {
+export interface Move {
   x: number;
   y: number;
   playerId: PlayerId;
-};
+}
 
 export interface MoveAction {
   type: ActionType.MOVE;
   payload: Move;
 }
 
-export type Join = {
+export interface Join {
   publicKey: string;
   playerId: PlayerId;
-};
+}
 
 export interface JoinAction {
   type: ActionType.JOIN;
