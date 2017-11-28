@@ -1,9 +1,19 @@
-import { createJoinAction, createMoveAction } from "./actions";
-import { createClient } from "./client";
-import { dispatchAction, dispatchUnsecureAction } from "./io";
+import { Action, createJoinAction, createMoveAction } from "./actions";
+import { createClient, IClient } from "./client";
+import { receiveAction, receiveUnsecureAction } from "./io";
+import { signAction } from "./pgp";
 
 // tslint:disable-next-line no-empty
 const noop = () => {};
+
+function dispatchAction(client: IClient, action: Action, clients: IClient[]) {
+  const signedAction = signAction(client, action);
+  return clients.map(cli => receiveAction(cli, signedAction));
+}
+
+function dispatchUnsecureAction(action: Action, clients: IClient[]) {
+  return clients.map(cli => receiveUnsecureAction(cli, action));
+}
 
 function sharePublicKeys(clients) {
   return clients.reduce(

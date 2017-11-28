@@ -1,5 +1,7 @@
 import * as ursa from "ursa";
 
+import { Action } from "./actions";
+import { IClient } from "./client";
 import { ISignedAction } from "./io";
 
 export function verifyActionSender(
@@ -17,6 +19,17 @@ export function verifyActionSender(
   } catch {
     return false;
   }
+}
+
+export function signAction(client: IClient, action: Action): ISignedAction {
+  const signature = createSignature(
+    client.privateKey,
+    JSON.stringify(action.payload)
+  );
+  return {
+    action,
+    signature
+  };
 }
 
 export function generatePrivateKey() {
