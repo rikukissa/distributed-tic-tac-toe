@@ -1,6 +1,6 @@
-import { Action, handleAction } from "./actions";
+import { Action, handleAction, Result } from "./actions";
 import { IClient } from "./client";
-import { createSignature, signAction, verifyActionSender } from "./pgp";
+import { signAction, verifyActionSender } from "./pgp";
 
 export interface ISignedAction {
   signature: string;
@@ -11,11 +11,15 @@ export interface ISignedAction {
  * Inbound message handling
  */
 
-export function receiveAction(client: IClient, signedAction: ISignedAction) {
+export function receiveAction(
+  client: IClient,
+  signedAction: ISignedAction
+): Result {
   if (!verifyActionSender(signedAction, client.publicKeys)) {
-    return client;
+    return [client, []];
   }
-  return handleAction(client, signedAction.action);
+
+  return receiveUnsecureAction(client, signedAction.action);
 }
 
 // Used for the first "JOIN" message when others do not know your public key
@@ -29,7 +33,7 @@ export function receiveUnsecureAction(client: IClient, action: Action) {
 
 export function dispatchAction(client: IClient, action: Action): void {
   const signedAction = signAction(client, action);
-  // Send to peers
+  // Send to peers HTTP
 }
 
 // Used for the first "JOIN" message when others do not know your public key

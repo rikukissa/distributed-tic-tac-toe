@@ -1,7 +1,7 @@
 import { Action } from "./actions";
 import { PlayerId } from "./game";
 import { createGameboard, GameBoard } from "./gameboard";
-import { generatePrivateKey } from "./pgp";
+import { generatePrivateKey, IPrivateKey } from "./pgp";
 
 export interface IClient {
   playerId: PlayerId;
@@ -12,7 +12,7 @@ export interface IClient {
 
   // Stuff that would live somewhere in the client
   // never to be shared with other clients
-  privateKey: any;
+  privateKey: IPrivateKey;
 
   // Stuff that could be also just derived from actions
   gameboard: GameBoard;

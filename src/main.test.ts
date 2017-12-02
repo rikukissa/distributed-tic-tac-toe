@@ -6,16 +6,57 @@ import { signAction } from "./pgp";
 // tslint:disable-next-line no-empty
 const noop = () => {};
 
-function dispatchAction(client: IClient, action: Action, clients: IClient[]) {
+function dispatchAction(
+  client: IClient,
+  action: Action,
+  clients: IClient[]
+): IClient[] {
   const signedAction = signAction(client, action);
-  return clients.map(cli => receiveAction(cli, signedAction));
+
+  return clients.reduce((allUpdatedClients, cli) => {
+    const [updatedClient, actions] = receiveAction(cli, signedAction);
+    return actions.reduce(
+      (updatedClients, proceedingAction) =>
+        dispatchAction(updatedClient, proceedingAction, updatedClients),
+      allUpdatedClients.map(
+        c => (c.playerId === updatedClient.playerId ? updatedClient : c)
+      )
+    );
+  }, clients);
 }
 
-function dispatchUnsecureAction(action: Action, clients: IClient[]) {
-  return clients.map(cli => receiveUnsecureAction(cli, action));
+type AccumulatedResults = [IClient[], Action[]];
+
+export function dispatchUnsecureAction(
+  action: Action,
+  clients: IClient[]
+): IClient[] {
+  const [updatedClients, actions]: AccumulatedResults = clients.reduce(
+    (
+      [allUpdatedClients, newActionsFromAllClients]: AccumulatedResults,
+      receivingClient: IClient
+    ): AccumulatedResults => {
+      const [updatedClient, newActions] = receiveUnsecureAction(
+        receivingClient,
+        action
+      );
+
+      return [
+        allUpdatedClients.concat(updatedClient),
+        newActionsFromAllClients.concat(newActions)
+      ];
+    },
+    [[], []]
+  );
+
+  return actions.reduce(
+    (allUpdatedClients: IClient[], proceedingAction: Action) =>
+      dispatchUnsecureAction(proceedingAction, allUpdatedClients),
+    updatedClients
+  );
 }
 
-function sharePublicKeys(clients) {
+function sharePublicKeys(clients): IClient[] {
   return clients.reduce(
     (finalClients, client) =>
       dispatchUnsecureAction(createJoinAction(client), finalClients),

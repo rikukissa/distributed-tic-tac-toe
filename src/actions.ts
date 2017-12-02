@@ -5,7 +5,8 @@ import { getPublicKey } from "./pgp";
 
 export enum ActionType {
   MOVE = "MOVE",
-  JOIN = "JOIN"
+  JOIN = "JOIN",
+  HANDSHAKE = "HANDSHAKE"
 }
 
 export interface IMove {
@@ -29,26 +30,45 @@ export interface IJoinAction {
   payload: IJoin;
 }
 
-export type Action = IMoveAction | IJoinAction;
+export interface IHandshake {
+  to: PlayerId;
+  publicKey: string;
+  playerId: PlayerId;
+}
+
+export interface IHandshakeAction {
+  type: ActionType.HANDSHAKE;
+  payload: IHandshake;
+}
+
+export type Action = IMoveAction | IJoinAction | IHandshakeAction;
+
+export type Result = [IClient, Action[]];
 
 /* 
  * Main action handler
  */
 
-export function handleAction(client: IClient, action: Action): IClient {
+export function handleAction(client: IClient, action: Action): Result {
   if (action.type === ActionType.MOVE) {
-    return makeMove(client, action);
+    return [makeMove(client, action), []];
   }
 
   if (action.type === ActionType.JOIN) {
-    return storePublicKey(
-      client,
-      action.payload.playerId,
-      action.payload.publicKey
-    );
+    return [
+      storePublicKey(client, action.payload.playerId, action.payload.publicKey),
+      [createHandshakeAction(client, action.payload.playerId)]
+    ];
   }
 
-  return client;
+  if (action.type === ActionType.HANDSHAKE) {
+    return [
+      storePublicKey(client, action.payload.playerId, action.payload.publicKey),
+      []
+    ];
+  }
+
+  return [client, []];
 }
 
 /* 
@@ -94,5 +114,19 @@ export function createJoinAction(client: IClient): IJoinAction {
       publicKey: getPublicKey(client.privateKey)
     },
     type: ActionType.JOIN
+  };
+}
+
+export function createHandshakeAction(
+  client: IClient,
+  receivingPlayerId: PlayerId
+): IHandshakeAction {
+  return {
+    payload: {
+      playerId: client.playerId,
+      publicKey: getPublicKey(client.privateKey),
+      to: receivingPlayerId
+    },
+    type: ActionType.HANDSHAKE
   };
 }

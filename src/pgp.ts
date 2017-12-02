@@ -4,6 +4,15 @@ import { Action } from "./actions";
 import { IClient } from "./client";
 import { ISignedAction } from "./io";
 
+export interface IPrivateKey {
+  privateEncrypt(
+    message: string,
+    charEncoding: string,
+    encoding: string
+  ): string;
+  toPublicPem(): string;
+}
+
 export function verifyActionSender(
   signedAction: ISignedAction,
   publicKeys: {
@@ -32,11 +41,11 @@ export function signAction(client: IClient, action: Action): ISignedAction {
   };
 }
 
-export function generatePrivateKey() {
+export function generatePrivateKey(): IPrivateKey {
   return ursa.generatePrivateKey(1024, 6969);
 }
 
-export function createSignature(privateKey, payload): string {
+export function createSignature(privateKey: IPrivateKey, payload): string {
   return privateKey.privateEncrypt(JSON.stringify(payload), "utf8", "base64");
 }
 
