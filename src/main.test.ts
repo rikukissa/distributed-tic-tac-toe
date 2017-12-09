@@ -1,7 +1,7 @@
-import { Action, createJoinAction, createMoveAction } from "./actions";
-import { createClient, IClient } from "./client";
-import { receiveAction, receiveUnsecureAction } from "./io";
-import { signAction } from "./pgp";
+import { Action, createJoinAction, createMoveAction } from "./lib/actions";
+import { createClient, IClient } from "./lib/client";
+import { receiveAction, receiveUnsecureAction } from "./lib/io";
+import { signAction } from "./lib/pgp";
 
 // tslint:disable-next-line no-empty
 const noop = () => {};
