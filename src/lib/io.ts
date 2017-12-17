@@ -1,6 +1,6 @@
 import { Action, handleAction, Result } from "./actions";
 import { IClient } from "./client";
-import { signAction, verifyActionSender } from "./pgp";
+import { verifyActionSender } from "./pgp";
 
 export interface ISignedAction {
   signature: string;
@@ -29,14 +29,5 @@ export function receiveUnsecureAction(client: IClient, action: Action) {
 
 /* 
  * Outbound communication
+ * - Should be implemented by API consumer
  */
-
-export function dispatchAction(client: IClient, action: Action): void {
-  const signedAction = signAction(client, action);
-  // Send to peers HTTP
-}
-
-// Used for the first "JOIN" message when others do not know your public key
-export function dispatchUnsecureAction(action: Action): void {
-  // Send to peers
-}

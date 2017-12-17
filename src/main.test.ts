@@ -1,131 +1,126 @@
 import { Action, createJoinAction, createMoveAction } from "./lib/actions";
 import { createClient, IClient } from "./lib/client";
-import { receiveAction, receiveUnsecureAction } from "./lib/io";
+import { ISignedAction, receiveAction, receiveUnsecureAction } from "./lib/io";
 import { signAction } from "./lib/pgp";
+
+import { EventEmitter } from "events";
 
 // tslint:disable-next-line no-empty
 const noop = () => {};
 
+interface INetwork {
+  emit: (action: Action | ISignedAction) => void;
+  subscribe: (action: Action | ISignedAction) => void;
+}
+
+function createNetwork() {
+  const eventEmitter = new EventEmitter();
+  return {
+    emit: action => eventEmitter.emit("message", action),
+    subscribe: handler => eventEmitter.on("message", handler)
+  };
+}
+
 function dispatchAction(
   client: IClient,
   action: Action,
-  clients: IClient[]
-): IClient[] {
+  network: INetwork
+): void {
   const signedAction = signAction(client, action);
-
-  return clients.reduce((allUpdatedClients, cli) => {
-    const [updatedClient, actions] = receiveAction(cli, signedAction);
-    return actions.reduce(
-      (updatedClients, proceedingAction) =>
-        dispatchAction(updatedClient, proceedingAction, updatedClients),
-      allUpdatedClients.map(
-        c => (c.playerId === updatedClient.playerId ? updatedClient : c)
-      )
-    );
-  }, clients);
+  network.emit(signedAction);
 }
 
-type AccumulatedResults = [IClient[], Action[]];
+function createStatefulClient(id, network) {
+  const client = { current: createClient(id) };
 
-export function dispatchUnsecureAction(
-  action: Action,
-  clients: IClient[]
-): IClient[] {
-  const [updatedClients, actions]: AccumulatedResults = clients.reduce(
-    (
-      [allUpdatedClients, newActionsFromAllClients]: AccumulatedResults,
-      receivingClient: IClient
-    ): AccumulatedResults => {
-      const [updatedClient, newActions] = receiveUnsecureAction(
-        receivingClient,
-        action
-      );
+  network.subscribe((action: ISignedAction | Action) => {
+    let updatedClient;
+    let actions;
 
-      return [
-        allUpdatedClients.concat(updatedClient),
-        newActionsFromAllClients.concat(newActions)
-      ];
-    },
-    [[], []]
-  );
+    [updatedClient, actions] = (action as ISignedAction).signature
+      ? receiveAction(client.current, action as ISignedAction)
+      : receiveUnsecureAction(client.current, action as Action);
 
-  return actions.reduce(
-    (allUpdatedClients: IClient[], proceedingAction: Action) =>
-      dispatchUnsecureAction(proceedingAction, allUpdatedClients),
-    updatedClients
-  );
-}
+    actions.forEach(next => network.emit(next));
+    client.current = updatedClient;
+  });
 
-function sharePublicKeys(clients): IClient[] {
-  return clients.reduce(
-    (finalClients, client) =>
-      dispatchUnsecureAction(createJoinAction(client), finalClients),
-    clients
-  );
+  network.emit(createJoinAction(client.current));
+
+  return client;
 }
 
 describe("Hangouts", () => {
   describe("Client", () => {
     it("can do a move", () => {
-      const clients = sharePublicKeys([
-        createClient(1),
-        createClient(2),
-        createClient(3),
-        createClient(4)
-      ]);
+      const network = createNetwork();
+
+      const clients = [
+        createStatefulClient(1, network),
+        createStatefulClient(2, network),
+        createStatefulClient(3, network),
+        createStatefulClient(4, network)
+      ];
 
       const [client1] = clients;
-
-      const updatedClients = dispatchAction(
-        client1,
-        createMoveAction(client1, 14, 0),
-        clients
+      const initialGameboard = client1.current.gameboard;
+      dispatchAction(
+        client1.current,
+        createMoveAction(client1.current, 14, 0),
+        network
       );
 
-      expect(updatedClients[0].gameboard).toEqual(updatedClients[1].gameboard);
-      expect(updatedClients[2].gameboard).toEqual(updatedClients[3].gameboard);
-
-      expect(client1.gameboard).not.toEqual(updatedClients[0].gameboard);
-
-      expect(updatedClients[1].turn).toEqual(2);
+      expect(clients[0].current.gameboard).toEqual(
+        clients[1].current.gameboard
+      );
+      expect(clients[2].current.gameboard).toEqual(
+        clients[3].current.gameboard
+      );
+      expect(clients[1].current.turn).toEqual(2);
+      expect(initialGameboard).not.toEqual(clients[0].current.gameboard);
     });
 
     it("can't do a move when it's someone else's turn", () => {
-      const clients = sharePublicKeys([
-        createClient(1),
-        createClient(2),
-        createClient(3),
-        createClient(4)
-      ]);
+      const network = createNetwork();
+
+      const clients = [
+        createStatefulClient(1, network),
+        createStatefulClient(2, network),
+        createStatefulClient(3, network),
+        createStatefulClient(4, network)
+      ];
 
       const [client1, client2] = clients;
 
-      const initialGameboard = client1.gameboard;
+      const initialGameboard = client1.current.gameboard;
 
-      const updatedClients = dispatchAction(
-        client2,
-        createMoveAction(client2, 14, 0),
-        clients
+      dispatchAction(
+        client2.current,
+        createMoveAction(client2.current, 14, 0),
+        network
       );
 
-      expect(updatedClients[1].gameboard).toEqual(initialGameboard);
-      expect(updatedClients[1].turn).toEqual(1);
+      expect(clients[1].current.gameboard).toEqual(initialGameboard);
+      expect(clients[1].current.turn).toEqual(1);
     });
 
     describe("Invalid moves", () => {
       it("cant do a move as any other player", () => {
-        const clients = sharePublicKeys([
-          createClient(1),
-          createClient(2),
-          createClient(3),
-          createClient(4)
-        ]);
+        const network = createNetwork();
+
+        const clients = [
+          createStatefulClient(1, network),
+          createStatefulClient(2, network),
+          createStatefulClient(3, network),
+          createStatefulClient(4, network)
+        ];
         const [client1] = clients;
-        const initialGameboard = client1.gameboard;
-        const action = createMoveAction(client1, 14, 0);
+        const initialGameboard = client1.current.gameboard;
+        const action = createMoveAction(client1.current, 14, 0);
         action.payload.playerId = 2;
-        const [, client2] = dispatchAction(client1, action, clients);
-        expect(client2.gameboard).toEqual(initialGameboard);
+
+        dispatchAction(client1.current, action, network);
+        expect(clients[2].current.gameboard).toEqual(initialGameboard);
       });
 
       it.skip("can't add an X on to a reserved square", noop);
